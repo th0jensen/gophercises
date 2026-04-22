@@ -14,7 +14,12 @@ import (
 	"time"
 )
 
-func readCSVFile(filePath string) ([][]string, error) {
+type question struct {
+	prompt string
+	answer string
+}
+
+func readCSVFile(filePath string) ([]question, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -22,10 +27,16 @@ func readCSVFile(filePath string) ([][]string, error) {
 	defer file.Close()
 
 	csvReader := csv.NewReader(file)
-	records, err := csvReader.ReadAll()
+	entries, err := csvReader.ReadAll()
 	if err != nil {
 		return nil, err
 	}
+
+	records := make([]question, len(entries))
+	for i, entry := range entries {
+		records[i] = question{entry[0], entry[1]}
+	}
+
 	return records, nil
 }
 
@@ -41,20 +52,20 @@ func main() {
 	signal.Notify(sigCh, os.Interrupt)
 
 	reader := bufio.NewReader(os.Stdin)
-	quiz, err := readCSVFile(*filePath)
+	questions, err := readCSVFile(*filePath)
 	if err != nil {
-		log.Fatalf("Unable to read CSV file: %v", err)
+		log.Fatalf("Unable to read CSV file: %s", err)
 	}
 
 	if strings.ToLower(*shuffle) == "true" {
-		rand.Shuffle(len(quiz), func(i, j int) { quiz[i], quiz[j] = quiz[j], quiz[i] })
+		rand.Shuffle(len(questions), func(i, j int) { questions[i], questions[j] = questions[j], questions[i] })
 	}
 
 	ctx := context.Background()
 	var cancel context.CancelFunc
 
 	if *timerDuration != "" {
-		fmt.Printf("Ready to start? You have %v...", *timerDuration)
+		fmt.Printf("Ready to start? You have %s...", *timerDuration)
 		reader.ReadString('\n')
 		duration, err := time.ParseDuration(*timerDuration)
 		if err != nil {
@@ -68,7 +79,7 @@ func main() {
 	}
 
 	var score int
-	for i, entry := range quiz {
+	for i, question := range questions {
 		answerCh := make(chan string, 1)
 
 		go func() {
@@ -76,7 +87,7 @@ func main() {
 			answerCh <- strings.TrimSpace(text)
 		}()
 
-		fmt.Printf("Problem #%v: %v = ", i+1, entry[0])
+		fmt.Printf("Problem #%d: %s = ", i+1, question.prompt)
 
 		select {
 		case <-ctx.Done():
@@ -86,15 +97,15 @@ func main() {
 			fmt.Println()
 			goto results
 		case userAnswer := <-answerCh:
-			if strings.EqualFold(userAnswer, entry[1]) {
+			if strings.EqualFold(userAnswer, question.answer) {
 				score++
 			}
 		}
 	}
 
 results:
-	fmt.Printf("You scored %v/%v\n", score, len(quiz))
-	if score == len(quiz) {
-		fmt.Printf("Congratulations, you got a perfect score!")
+	fmt.Printf("You scored %d/%d\n", score, len(questions))
+	if score == len(questions) {
+		fmt.Println("Congratulations, you got a perfect score!")
 	}
 }
