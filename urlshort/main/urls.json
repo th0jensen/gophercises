@@ -1,0 +1,18 @@
+[
+  {
+    "path": "/",
+    "url": "https://thojensen.com/"
+  },
+  {
+    "path": "/projects",
+    "url": "https://thojensen.com/projects"
+  },
+  {
+    "path": "/experience",
+    "url": "https://thojensen.com/experience"
+  },
+  {
+    "path": "/contact",
+    "url": "https://thojensen.com/contact"
+  }
+]
